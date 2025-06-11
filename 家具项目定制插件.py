@@ -97,11 +97,11 @@ class OBJECT_OT_create_material_with_texture(bpy.types.Operator):
                 mix_node.inputs['Fac'].default_value = 1.0
                 mix_node.location = (-100, 0)
 
-                separate = nodes.new('ShaderNodeSeparateRGB')
+                separate = nodes.new('ShaderNodeSeparateColor')
                 separate.location = (-250, -100)
 
-                links.new(texture_map["_ORM"].outputs['Color'], separate.inputs['Image'])
-                links.new(separate.outputs['R'], mix_node.inputs['Color2'])
+                links.new(texture_map["_ORM"].outputs['Color'], separate.inputs['Color'])
+                links.new(separate.outputs['Red'], mix_node.inputs['Color2'])
                 links.new(texture_map["_D"].outputs['Color'], mix_node.inputs['Color1'])
                 links.new(mix_node.outputs['Color'], bsdf.inputs['Base Color'])
 
@@ -115,11 +115,11 @@ class OBJECT_OT_create_material_with_texture(bpy.types.Operator):
                 links.new(normal_map.outputs['Normal'], bsdf.inputs['Normal'])
 
             if texture_map["_ORM"]:
-                separate = nodes.new('ShaderNodeSeparateRGB')
+                separate = nodes.new('ShaderNodeSeparateColor')
                 separate.location = (-250, -100)
-                links.new(texture_map["_ORM"].outputs['Color'], separate.inputs['Image'])
-                links.new(separate.outputs['G'], bsdf.inputs['Roughness'])
-                links.new(separate.outputs['B'], bsdf.inputs['Metallic'])
+                links.new(texture_map["_ORM"].outputs['Color'], separate.inputs['Color'])
+                links.new(separate.outputs['Green'], bsdf.inputs['Roughness'])
+                links.new(separate.outputs['Blue'], bsdf.inputs['Metallic'])
 
             if obj.data.materials:
                 obj.data.materials[0] = material
