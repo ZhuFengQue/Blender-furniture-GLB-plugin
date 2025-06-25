@@ -1,4 +1,31 @@
-#20250611更新：
+# 20250625更新：
+## - 导出GLB功能优化：
+#### 1. 在我使用的Blender3.4版本中，导出glb文件时使用默认选项可能会包含关键帧信息，与标准要求不符。所以为导出GLB添加了关闭动画的逻辑。
+        # 导出GLB并禁用动画
+        try:
+            bpy.ops.export_scene.gltf(
+                filepath=export_path,
+                export_format='GLB',
+                use_selection=True,
+                export_animations=False
+            )
+#### 2. 在实际使用过程中由于贴图的修改更新，可能会经常重复地导出glb，但是新导出的文件无法覆盖旧文件，只能在每次导出前删除旧文件。 添加了删除旧文件的逻辑，确保每次导出的glb文件都是最新的。
+        # ✅ 强制删除已有文件（防止覆盖失败）
+        try:
+            if os.path.exists(export_path):
+                os.remove(export_path)
+        except Exception as e:
+            self.report({'ERROR'}, f"无法删除旧文件（可能被占用）: {str(e)}")
+            return {'CANCELLED'}
+## - 添加了两个新功能：
+| 新增功能 | 说明 |
+|------|------|
+| 创建空对比图 | 点击会在贴图所在文件夹创建一个100*100的空白png图片，其命名为贴图名的纯数字部分+“_对比图”，方便在PS导出时直接覆盖。 |
+| 创建尺寸说明 | 点击会在贴图所在文件夹创建一个命名为“尺寸制作不协调，已在两尺寸正确的情况下，适当修改”的空白txt文件。 |
+
+---
+
+# 20250611更新：
 ## 修改分离颜色节点错误导致GLB文件在预览网站渲染异常。
 ![image](https://github.com/user-attachments/assets/1c13df49-d574-46b9-a719-9cb586cf5b2f)
 
