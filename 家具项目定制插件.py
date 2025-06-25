@@ -186,6 +186,7 @@ class OBJECT_OT_export_selected_to_glb(bpy.types.Operator):
 
     def execute(self, context):
         selected_objects = context.selected_objects
+
         if not selected_objects:
             self.report({'WARNING'}, "没有选中任何对象")
             return {'CANCELLED'}
@@ -220,10 +221,102 @@ class OBJECT_OT_export_selected_to_glb(bpy.types.Operator):
         glb_name = f"{match.group()}.glb" if match else f"{file_prefix}.glb"
         export_path = os.path.join(texture_dir, glb_name)
 
-        bpy.ops.export_scene.gltf(filepath=export_path, export_format='GLB', use_selection=True)
-        self.report({'INFO'}, f"已导出 GLB 文件: {export_path}")
+        # ✅ 强制删除已有文件（防止覆盖失败）
+        try:
+            if os.path.exists(export_path):
+                os.remove(export_path)
+        except Exception as e:
+            self.report({'ERROR'}, f"无法删除旧文件（可能被占用）: {str(e)}")
+            return {'CANCELLED'}
+
+        # 导出GLB并禁用动画
+        try:
+            bpy.ops.export_scene.gltf(
+                filepath=export_path,
+                export_format='GLB',
+                use_selection=True,
+                export_animations=False
+            )
+            self.report({'INFO'}, f"已导出 GLB 文件: {export_path}")
+        except Exception as e:
+            self.report({'ERROR'}, f"导出失败: {str(e)}")
+            return {'CANCELLED'}
+
         return {'FINISHED'}
 
+# Operator: 创建空对比图
+class OBJECT_OT_create_blank_comparison_image(bpy.types.Operator):
+    bl_idname = "object.create_blank_comparison_image"
+    bl_label = "创建空对比图"
+    bl_description = "在纹理贴图目录中创建一个空白对比图（100x100px）"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        selected_objects = context.selected_objects
+
+        if not selected_objects:
+            self.report({'WARNING'}, "没有选中任何对象")
+            return {'CANCELLED'}
+
+        texture_path = None
+        for obj in selected_objects:
+            if not obj.data.materials:
+                continue
+            for material in obj.data.materials:
+                if not material.use_nodes:
+                    continue
+                for node in material.node_tree.nodes:
+                    if node.type == 'TEX_IMAGE':
+                        image_name = os.path.splitext(node.image.name)[0]
+                        if image_name.endswith("_D") or image_name.endswith("_N") or image_name.endswith("_ORM"):
+                            texture_path = node.image.filepath_raw
+                            break
+                if texture_path:
+                    break
+            if texture_path:
+                break
+
+        if not texture_path:
+            self.report({'ERROR'}, "未找到贴图路径，请先应用贴图")
+            return {'CANCELLED'}
+
+        texture_dir = os.path.dirname(texture_path)
+        base_name = os.path.basename(texture_path)
+        file_prefix = os.path.splitext(base_name)[0]
+
+        # 提取纯数字部分
+        match = re.search(r'\d+', file_prefix)
+        if not match:
+            self.report({'ERROR'}, "文件名不含数字，无法生成对比图名称")
+            return {'CANCELLED'}
+
+        comparison_name = f"{match.group()}_对比图.png"
+        comparison_path = os.path.join(texture_dir, comparison_name)
+
+        # 使用 Blender 自带 API 创建空白图像
+        try:
+            # 创建新图像（100x100 像素）
+            img = bpy.data.images.new(name="BlankComparisonImage", width=100, height=100)
+
+            # 设置像素数据（RGBA，白色透明背景）
+            # 每个像素有4个通道，共100x100像素
+            pixels = [1.0] * (100 * 100 * 4)  # RGBA 各通道为1.0（白色+透明）
+            img.pixels = pixels  # 将像素数据写入图像
+
+            # 保存为 PNG 文件
+            img.filepath_raw = comparison_path
+            img.file_format = 'PNG'
+            img.save()
+
+            # 删除内存中的临时图像（避免占用资源）
+            bpy.data.images.remove(img)
+
+            self.report({'INFO'}, f"已创建空白对比图: {comparison_path}")
+        except Exception as e:
+            self.report({'ERROR'}, f"图像创建失败：{str(e)}")
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
 # Operator: 打开网页并显示 GLB 文件路径
 class OBJECT_OT_open_glb_viewer(bpy.types.Operator):
     bl_idname = "object.open_glb_viewer"
@@ -307,6 +400,56 @@ class OBJECT_OT_open_author_github(bpy.types.Operator):
         self.report({'INFO'}, "正在打开 ZhuFengQue 的 GitHub 页面")
         return {'FINISHED'}
 
+# Operator: 创建尺寸说明文件
+class OBJECT_OT_create_dimension_note_file(bpy.types.Operator):
+    bl_idname = "object.create_dimension_note_file"
+    bl_label = "创建尺寸说明"
+    bl_description = "尺寸制作不协调，已在两尺寸正确的情况下，适当修改.txt"
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        selected_objects = context.selected_objects
+
+        if not selected_objects:
+            self.report({'WARNING'}, "没有选中任何对象")
+            return {'CANCELLED'}
+
+        texture_path = None
+        for obj in selected_objects:
+            if not obj.data.materials:
+                continue
+            for material in obj.data.materials:
+                if not material.use_nodes:
+                    continue
+                for node in material.node_tree.nodes:
+                    if node.type == 'TEX_IMAGE':
+                        image_name = os.path.splitext(node.image.name)[0]
+                        if image_name.endswith("_D") or image_name.endswith("_N") or image_name.endswith("_ORM"):
+                            texture_path = node.image.filepath_raw
+                            break
+                if texture_path:
+                    break
+            if texture_path:
+                break
+
+        if not texture_path:
+            self.report({'ERROR'}, "未找到贴图路径，请先应用贴图")
+            return {'CANCELLED'}
+
+        texture_dir = os.path.dirname(texture_path)
+        note_filename = "尺寸制作不协调，已在两尺寸正确的情况下，适当修改.txt"
+        note_filepath = os.path.join(texture_dir, note_filename)
+
+        # 创建空的 txt 文件
+        try:
+            with open(note_filepath, 'w', encoding='utf-8') as f:
+                f.write("")  # 留空
+            self.report({'INFO'}, f"已创建尺寸说明文件：{note_filepath}")
+        except Exception as e:
+            self.report({'ERROR'}, f"无法创建文件：{str(e)}")
+            return {'CANCELLED'}
+
+        return {'FINISHED'}
 
 
 # Panel: 添加到 N 面板
@@ -339,7 +482,15 @@ class VIEW3D_PT_quick_material_panel(bpy.types.Panel):
             layout.operator("object.copy_glb_path", icon='COPYDOWN', text="复制 GLB 路径到剪贴板")
 
         layout.separator()
+        layout.operator("object.create_blank_comparison_image", icon='IMAGE_DATA', text="创建空对比图")
+
+        layout.separator()
+        layout.operator("object.create_dimension_note_file", icon='TEXT', text="创建尺寸说明")
+
+        layout.separator()
         layout.operator("object.open_author_github", text="ZhuFengQue", icon='URL')
+
+
 
 classes = (
     SCENE_OT_set_unit_to_inches,
@@ -349,6 +500,8 @@ classes = (
     OBJECT_OT_open_glb_viewer,
     OBJECT_OT_copy_glb_path,
     OBJECT_OT_open_author_github,  
+    OBJECT_OT_create_blank_comparison_image,
+    OBJECT_OT_create_dimension_note_file,  
     VIEW3D_PT_quick_material_panel,
 )
 
