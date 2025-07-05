@@ -5,8 +5,7 @@
 |------|------|
 | 复制文件夹结构 | 选择**源文件夹**会将文件夹名及其子文件夹结构列出来(方便复制)，选择**目标文件夹**，点击**开始复制**将文件夹及其子文件夹结构(**不包含文件**)复制到指定位置。 |
 | 文件命名检测 | 点击**选择工具**，选择文件命名检测；可以检测**源文件夹**中的文件命名中的数字部分与其所在的文件夹名是否一样。不匹配的文件将会在**结果检测**中标注为红色。  |
-![image](https://github.com/user-attachments/assets/eead41cd-2c69-42a3-9727-fde97c67c724)
-![image](https://github.com/user-attachments/assets/5866df55-b03c-4232-a71e-9c2c66633f40)
+| ![image](https://github.com/user-attachments/assets/eead41cd-2c69-42a3-9727-fde97c67c724) | ![image](https://github.com/user-attachments/assets/5866df55-b03c-4232-a71e-9c2c66633f40) |
 
 
 
